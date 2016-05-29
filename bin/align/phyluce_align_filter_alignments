@@ -13,6 +13,8 @@ import os
 import glob
 import shutil
 import argparse
+import multiprocessing
+import sys
 from Bio import AlignIO
 from phyluce.helpers import is_dir, FullPaths, CreateDir, get_file_extensions
 from phyluce.log import setup_logging
@@ -64,6 +66,12 @@ def get_args():
             type=int,
             default=0,
             help="""Filter out alignments with fewer than --min-taxa"""
+        )
+    parser.add_argument(
+            "--cores",
+            type=int,
+            default=1,
+            help="""Process alignments in parallel using --cores"""
         )
     parser.add_argument(
         "--verbosity",
@@ -127,37 +135,53 @@ def align_min_taxa(args, aln):
         taxa = False
     return taxa
 
+def worker(work):
+    args, f = work
+    try:
+        aln = AlignIO.read(f, args.input_format)
+        if args.containing:
+            containing = align_contains_taxa(args, aln)
+        else:
+            containing = True
+        if args.min_length:
+            length = align_min_length(args, aln)
+        else:
+            length = True
+        if args.min_taxa:
+            taxa = align_min_taxa(args, aln)
+        else:
+            taxa = True
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        if containing and taxa and length and args.output:
+            name = os.path.basename(f)
+            shutil.copy(f, os.path.join(args.output, name))
+            return 1
+        else:
+            return 0
+    except ValueError, e:
+        if e.message == 'No records found in handle':
+            print 'No records found in {0}'.format(os.path.basename(f))
+        else:
+            raise ValueError('Something is wrong with alignment {0}'.format(os.path.basename(f)))
+    
 
 def main():
     args = get_args()
     # setup logging
     log, my_name = setup_logging(args)
     files = get_files(args.alignments, args.input_format)
-    for f in files:
-        try:
-            aln = AlignIO.read(f, args.input_format)
-            if args.containing:
-                containing = align_contains_taxa(args, aln)
-            else:
-                containing = True
-            if args.min_length:
-                length = align_min_length(args, aln)
-            else:
-                length = True
-            if args.min_taxa:
-                taxa = align_min_taxa(args, aln)
-            else:
-                taxa = True
-            if containing and taxa and length:
-                log.info("Good alignment: {0}".format(os.path.basename(f)))
-            if containing and taxa and length and args.output:
-                name = os.path.basename(f)
-                shutil.copy(f, os.path.join(args.output, name))
-        except ValueError, e:
-            if e.message == 'No records found in handle':
-                print 'No records found in {0}'.format(os.path.basename(f))
-            else:
-                raise ValueError('Something is wrong with alignment {0}'.format(os.path.basename(f)))
+    work = [(args, f) for f in files]
+    if args.cores > 1:
+        assert args.cores <= multiprocessing.cpu_count(), "You've specified more cores than you have"
+        pool = multiprocessing.Pool(args.cores)
+        results = pool.map(worker, work)
+    else:
+        results = map(worker, work)
+    # flatten results
+    num_loci_retained = sum(results)
+    print ""
+    log.info("Number of loci retained in alignments: {0}".format(num_loci_retained))
     # end
     text = " Completed {} ".format(my_name)
     log.info(text.center(65, "="))
