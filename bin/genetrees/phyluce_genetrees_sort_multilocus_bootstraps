@@ -51,7 +51,7 @@ def main():
     all_bootreps = {}
     for root, dirs, files in os.walk(args.input):
         for d in dirs:
-            files = glob.glob(os.path.join(root, os.path.join(d, '*.bootrep.*')))
+            files = glob.glob(os.path.join(root, os.path.join(d, '*.bootrep')))
             bootreps = [f for f in files if "RAxML_bootstrap" in os.path.basename(f)]
             assert len(bootreps) == 1, "There appear to be <>1 bootstrap files in {}".format(d)
             bootrep = bootreps[0]
