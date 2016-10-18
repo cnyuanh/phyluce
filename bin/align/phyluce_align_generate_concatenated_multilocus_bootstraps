@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+File: phyluce_align_generate_concatenated_multilocus_bootstraps
+Author: Carl Oliveros
+Created by Carl Oliveros on 17 October 2016
+Copyright (c) 2016 Brant C. Faircloth. All rights reserved.
+"""
+
+import os
+import re
+import sys
+import glob
+import random
+import argparse
+from Bio.Nexus import Nexus
+from phyluce.helpers import is_dir, FullPaths, CreateDir
+from phyluce.log import setup_logging
+
+
+def get_args():
+    """Get arguments from CLI"""
+    parser = argparse.ArgumentParser(
+            description="""Generates concatenated multi-locus bootstrap replicates of data from nexus-formatted alignments""")
+    parser.add_argument(
+            "--alignments",
+            required=True,
+            type=is_dir,
+            action=FullPaths,
+            help="""The directory containing alignments in nexus format"""
+        )
+    parser.add_argument(
+            "--output",
+            required=True,
+            action=CreateDir,
+            help="""The output directory to hold bootstrap replicates"""
+        )
+    parser.add_argument(
+            "--bootreps",
+            type=int,
+            default=100,
+            help="""The number of bootstrap replicates to generate"""
+        )
+    parser.add_argument(
+            "--verbosity",
+            type=str,
+            choices=["INFO", "WARN", "CRITICAL"],
+            default="INFO",
+            help="""The logging level to use."""
+        )
+    parser.add_argument(
+            "--log-path",
+            action=FullPaths,
+            type=is_dir,
+            default=None,
+            help="""The path to a directory to hold logs."""
+        )
+    return parser.parse_args()
+
+def multilocus_bootstrap(data):
+    new_data = []
+    # generate multi-locus bootstrap by resampling loci with replacement
+    for i in xrange(0, len(data)):
+        new_locus_name, new_locus_data = random.choice(data)
+        # resample sites within each matrix
+        new_locus_data.matrix = new_locus_data.bootstrap()
+        new_data.append(('locus{0}.{1}'.format(i,new_locus_name), new_locus_data))
+    return new_data
+
+def main():
+    args = get_args()
+    log, my_name = setup_logging(args)
+    nexus_files = glob.glob(os.path.join(args.alignments, '*.nex*'))
+    log.info("Reading {0} alignments in NEXUS format".format(len(nexus_files)))
+    data = [(os.path.basename(fname), Nexus.Nexus(fname)) for fname in nexus_files]
+    for i in xrange(args.bootreps):
+        new_replicate = multilocus_bootstrap(data)
+        concatenated_replicate = Nexus.combine(new_replicate)
+        # write file 
+        outfname = os.path.join(args.output, 'mlbs.{}.phylip'.format(i))
+        concatenated_replicate.export_phylip(outfname)
+    text = " Completed {} ".format(my_name)
+    log.info(text.center(65, "="))
+
+if __name__ == '__main__':
+    main()
