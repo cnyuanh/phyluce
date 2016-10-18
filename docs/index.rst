@@ -60,6 +60,8 @@ Guide
    assembly
    uce-processing
    tutorial-one
+   tutorial-three
+   tutorial-four
 
 Project info
 ============
@@ -72,3 +74,11 @@ Project info
    attributions
    funding
    ack
+
+Supporting documents
+====================
+
+.. toctree::
+   :maxdepth: 2
+
+   list-of-programs

@@ -6,20 +6,23 @@
 Citing
 ******
 
-You can cite the `phyluce`_ repository using:
+If you use the `phyluce`_ code in any form, please cite the following manuscript:
 
-.. [BCF2014] Faircloth BC. 2014. phyluce: phylogenetic estimation from
-   ultraconserved elements.
-   doi:`10.6079/J9PHYL <http://doi.org/10.6079/J9PHYL>`_.
+.. [BCF2015] Faircloth BC. 2016. PHYLUCE is a software package for the analysis
+   of conserved genomic loci.  Bioinformatics 32:786-788.
+   doi:`10.1093/bioinformatics/btv646 <http://doi.org/10.1093/bioinformatics/btv646>`_.
 
-Please also cite the following manuscript, which describes the first use of the
-computer code as well as the general approach.  We should soon have an
-additional manuscript for the software, alone.
+If you are processing UCE data that you have collected by targeted
+enrichment using our probes/protocols, please cite the following
+manuscripts, which describes the first use of the general approach:
 
 .. [BCF2012] BC Faircloth, McCormack JE, Crawford NG, Harvey MG, Brumfield RT,
    Glenn TC. 2012. Ultraconserved elements anchor thousands of genetic markers
    spanning multiple evolutionary timescales. Systematic Biology 61: 717–726.
    doi:`10.1093/sysbio/SYS004 <http://doi.org/10.1093/sysbio/SYS004>`_.
+
+Then, if you are working in groups other than tetrapods, please cite the
+appropriate manuscript for the organisms you are working on.
 
 ..  _References:
 

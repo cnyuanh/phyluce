@@ -8,23 +8,25 @@ All rights reserved.
 This code is distributed under a 3-clause BSD license. Please see
 LICENSE.txt for more information.
 
-Created on 22 September 2010 12:48 PDT (-0700)
+Created on 04 June 2015 11:12 CDT (-0500)
 """
 
 import os
 import re
 import sys
+import string
 import argparse
 import multiprocessing
 
 from Bio import AlignIO
+from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
 from Bio.Align import MultipleSeqAlignment
 from phyluce.helpers import FullPaths, is_dir, CreateDir, get_alignment_files
 
 from phyluce.log import setup_logging
 
-# import pdb
+import pdb
 
 
 def get_args():
@@ -45,20 +47,14 @@ def get_args():
         help="""The output directory to hold the converted nexus files""",
     )
     parser.add_argument(
-        "--taxa",
-        type=int,
-        default=None,
-        help="""The expected number of taxa in all alignments""",
-    )
-    parser.add_argument(
         "--input-format",
-        choices=["fasta", "nexus", "phylip", "clustal", "emboss", "stockholm"],
+        choices=["fasta", "nexus", "phylip", "phylip-relaxed", "clustal", "emboss", "stockholm"],
         default="nexus",
         help="""The input alignment format.""",
     )
     parser.add_argument(
         "--output-format",
-        choices=["fasta", "nexus", "phylip", "clustal", "emboss", "stockholm"],
+        choices=["fasta", "nexus", "phylip", "phylip-relaxed", "clustal", "emboss", "stockholm"],
         default="nexus",
         help="""The output alignment format.""",
     )
@@ -83,23 +79,28 @@ def get_args():
         help="""Process alignments in parallel using --cores for alignment. """ +
         """This is the number of PHYSICAL CPUs."""
     )
+    parser.add_argument(
+        "--binary",
+        action="store_true",
+        default=False,
+        help="""Output alignments in binary encoding (A or G) = 1 and (C or T) = 0""",
+    )
     return parser.parse_args()
 
 
 def worker(work):
     all_taxa = []
-    args, f, in_type, out_type = work
+    args, f, in_type, out_type, translation_table = work
     new_align = MultipleSeqAlignment([], generic_dna)
     for align in AlignIO.parse(f, in_type):
         for seq in list(align):
-            fname = os.path.splitext(os.path.basename(f))[0].strip("_phased")
-            new_seq_name = re.sub("^(_R_)*{}_*".format(fname), "", seq.name)
-            all_taxa.append(new_seq_name)
-            seq.id = new_seq_name
-            seq.name = new_seq_name
+            seq_string = str(seq.seq)
+            seq_string_ry = seq_string.translate(translation_table)
+            new_seq = Seq(seq_string_ry, generic_dna)
+            new_seq.id = seq.id
+            new_seq.name = seq.name
+            seq.seq = new_seq
             new_align.append(seq)
-    if args.taxa is not None:
-        assert len(all_taxa) == args.taxa, "Taxon names are not identical"
     outf = os.path.join(args.output, "{}.{}".format(os.path.splitext(os.path.basename(f))[0], args.output_format))
     try:
         with open(outf, 'w') as outfile:
@@ -115,21 +116,21 @@ def main():
     # setup logging
     log, my_name = setup_logging(args)
     files = get_alignment_files(log, args.alignments, args.input_format)
-    work = [(args, f, args.input_format, args.output_format) for f in files]
+    # make translation table
+    if not args.binary:
+        translation_table = string.maketrans('AGRCTYSWKMBDHVagrctyswkmbdhv', 'RRRYYY????????rrryyy????????')
+    else:
+        translation_table = string.maketrans('AGRCTYSWKMBDHVNagrctyswkmbdhvn', '111000?????????111000?????????')
+    work = [(args, f, args.input_format, args.output_format, translation_table) for f in files]
     sys.stdout.write("Running")
     sys.stdout.flush()
     if args.cores > 1:
         assert args.cores <= multiprocessing.cpu_count(), "You've specified more cores than you have"
         pool = multiprocessing.Pool(args.cores)
-        results = pool.map(worker, work)
+        pool.map(worker, work)
     else:
-        results = map(worker, work)
-    # flatten results
-    all_taxa = set([item for sublist in results for item in sublist])
+        map(worker, work)
     print ""
-    log.info("Taxon names in alignments: {0}".format(
-        ','.join(list(all_taxa))
-    ))
     # end
     text = " Completed {} ".format(my_name)
     log.info(text.center(65, "="))

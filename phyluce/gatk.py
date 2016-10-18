@@ -106,19 +106,23 @@ def compute_coverage_metrics(contig_depth, trim=False):
     return metadata
 
 
-def get_trimmed_coverage_from_output(log, sample, assembly_pth, coverage, velvet):
+def get_trimmed_coverage_from_output(log, sample, assembly_pth, coverage, assembler):
     log.info("Screening and filtering contigs for coverage (3x ends, 5x avg.)")
-    if not velvet:
+    if assembler == "trinity":
         regex = re.compile("({}).*:(\d+)".format(get_user_param("headers", "trinity")))
-    else:
+    elif assembler == "velvet":
         regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "velvet")))
+    elif assembler == "abyss":
+        regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "abyss")))
+    elif assembler == "idba":
+        regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "idba")))
     # setup starting values
     previous_match = None
     contig_depth = []
     contig_data = OrderedDict()
     overall_coverage = []
     overall_length = []
-    overall_count = 0
+    overall_count = 1
     overall_contigs = {}
     pbc = os.path.join(
         assembly_pth,
@@ -192,19 +196,23 @@ def get_trimmed_coverage_from_output(log, sample, assembly_pth, coverage, velvet
     return overall_contigs
 
 
-def get_untrimmed_coverage_from_output(log, sample, assembly_pth, coverage, velvet):
+def get_untrimmed_coverage_from_output(log, sample, assembly_pth, coverage, assembler):
     log.info("Screening contigs for coverage")
-    if not velvet:
+    if assembler == "trinity":
         regex = re.compile("({}).*:(\d+)".format(get_user_param("headers", "trinity")))
-    else:
+    elif assembler == "velvet":
         regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "velvet")))
+    elif assembler == "abyss":
+        regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "abyss")))
+    elif assembler == "idba":
+        regex = re.compile("({}.*):(\d+)".format(get_user_param("headers", "idba")))
     # setup starting values
     previous_match = None
     contig_depth = []
     contig_data = OrderedDict()
     overall_coverage = []
     overall_length = []
-    overall_count = 0
+    overall_count = 1
     overall_contigs = {}
     upcc = os.path.join(
         assembly_pth,

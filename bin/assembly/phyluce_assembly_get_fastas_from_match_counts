@@ -17,7 +17,7 @@ from collections import defaultdict
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from phyluce.helpers import FullPaths, is_dir, is_file, get_names_from_config
+from phyluce.helpers import FullPaths, is_dir, is_file, get_names_from_config, get_contig_header_string
 from phyluce.pth import get_user_param
 from phyluce.log import setup_logging
 
@@ -109,10 +109,7 @@ def get_nodes_for_uces(c, organism, uces, extend=False, notstrict=False):
     missing = []
     for node in rows:
         if node[0] is not None:
-            contig_header_string = "{}|{}".format(
-                get_user_param("headers", "velvet"),
-                get_user_param("headers", "trinity")
-            )
+            contig_header_string = get_contig_header_string()
             match = re.search('^({})\(([+-])\)'.format(contig_header_string), node[0], flags=re.I)
             node_dict[match.groups()[0]] = (node[1], match.groups()[1])
         elif notstrict:
@@ -147,10 +144,7 @@ def find_file(contigs, name):
 
 def get_contig_name(header):
     """parse the contig name from the header of either velvet/trinity assembled contigs"""
-    contig_header_string = "{}|{}".format(
-        get_user_param("headers", "velvet"),
-        get_user_param("headers", "trinity")
-    )
+    contig_header_string = get_contig_header_string()
     match = re.search("^({}).*".format(contig_header_string), header, flags=re.I)
     return match.groups()[0]
 
@@ -225,9 +219,16 @@ def main():
             count = 0
             log.info("There are {} UCE loci for {}".format(len(node_dict), organism))
             log.info("Parsing and renaming contigs for {}".format(organism))
+            node_dict_set = set(node_dict.keys())
+            nodes_written_set = set()
             for seq in SeqIO.parse(open(reads, 'rU'), 'fasta'):
+                # break out of loop if we've already written everything we need
+                # to.  this should help to keep us from iteration over thousands
+                # of sequences if we do not need to.
+                if nodes_written_set == node_dict_set:
+                    break
                 name = get_contig_name(seq.id).lower()
-                if name in node_dict.keys():
+                if name in node_dict_set:
                     seq.id = "{0}_{1} |{0}".format(node_dict[name][0], organism.rstrip('*'))
                     seq.name = ''
                     seq.description = ''
@@ -243,6 +244,7 @@ def main():
                     seq, count = replace_and_remove_bases(regex, seq, count)
                     uce_fasta_out.write(seq.format('fasta'))
                     written.append(str(node_dict[name][0]))
+                    nodes_written_set.add(name)
                 else:
                     pass
             if count > 0:

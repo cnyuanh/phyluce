@@ -34,7 +34,7 @@ line, you can use something like:
     cd uce-tutorial
 
     # download the data into a file names fastq.zip
-    wget -O fastq.zip http://downloads.figshare.com/article/public/1284521
+    wget -O fastq.zip https://ndownloader.figshare.com/articles/1284521/versions/1
 
     # make a directory to hold the data
     mkdir raw-fastq
@@ -336,6 +336,8 @@ The output you see should look like this:
     All files in dir with mus_musculus-READ-singleton.fastq.gz,2332785,211828511,90.8049867433,0.0102813002698,40,100,100.0
 
 Now, we're ready to assemble our reads.
+
+.. _tutorial-assembly:
 
 Assemble the data
 =================
@@ -671,6 +673,8 @@ the `uce-search-results directory`):
 The search we just ran created lastz_ search result files for each taxon, and
 stored summary results of these searches in the `probe.matches.sqlite` database
 (see :ref:`Database` for more information on this database and its structure).
+
+.. _tutorial-uce-extraction:
 
 Extracting UCE loci
 ===================
