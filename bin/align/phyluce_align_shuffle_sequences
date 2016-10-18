@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+File: phyluce_align_shuffle_sequences
+Author: Carl Oliveros
+
+Description: Randomly shuffles entire sequences among taxa in a folder of nexus alignments.
+
+"""
+
+import os
+import sys
+import glob
+import argparse
+from Bio.Nexus import Nexus
+from random import shuffle
+from phyluce.helpers import is_dir, FullPaths, CreateDir
+from phyluce.log import setup_logging
+
+def get_args():
+    parser = argparse.ArgumentParser(
+        description='Randomly shuffles entire sequences among taxa in a folder of nexus alignments.')
+    parser.add_argument(
+        "--input", 
+        required=True,
+        type=is_dir, 
+        action=FullPaths,
+        help="The input directory containing nexus files")
+    parser.add_argument(
+        "--output", 
+        required=True,
+        action=CreateDir,
+        help="The directory in which to store the output files")
+    parser.add_argument(
+        "--log-path",
+        action=FullPaths,
+        type=is_dir,
+        default=None,
+        help="The path to a directory to hold logs.")
+    parser.add_argument(
+        "--verbosity",
+        type=str,
+        choices=["INFO", "WARN", "CRITICAL"],
+        default="INFO",
+        help="The logging level to use.")
+    return parser.parse_args()
+    
+    
+def main():
+    args = get_args()
+    log, my_name = setup_logging(args)
+    log.info("Reading input alignments in NEXUS format")
+    # read nexus files 
+    nexus_files = glob.glob(os.path.join(os.path.expanduser(args.input), '*.nexus'))
+    data = [(os.path.splitext(os.path.basename(fname))[0], Nexus.Nexus(fname)) for fname in nexus_files]
+    log.info("{} alignments read".format(len(data)))
+    log.info("Shuffling taxa in alignments")
+    for fname, alignment in data:
+        seq_data = []
+        # store sequences
+        for taxon in alignment.taxlabels:
+            seq_data.append(alignment.matrix[taxon])
+        # shuffle sequences
+        shuffle(seq_data)
+        # re-assign sequences
+        for i in xrange(len(alignment.taxlabels)):
+            alignment.matrix[alignment.taxlabels[i]] = seq_data[i]
+        # write out nexus
+        alignment.write_nexus_data(os.path.join(args.output, fname + '.nexus'))
+        # write progress dots to stdout
+        sys.stdout.write(".")
+        sys.stdout.flush()
+    print('')
+    text = " Completed {} ".format(my_name)
+    log.info(text.center(65, "="))
+        
+if __name__ == '__main__':
+    main()
